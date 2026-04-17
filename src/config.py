@@ -5,11 +5,10 @@ from pydantic import ConfigDict
 # =======================
 # 阿里云百炼（DashScope）
 # =======================
-env_file = ".env"
+env_file = "./.env"
 env_file_encoding ="utf-8"
 class DashScopeSettings(BaseSettings):
     api_key: str
-
     model_config = ConfigDict(
         env_prefix="DASHSCOPE_",
         env_file=env_file,
