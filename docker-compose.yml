@@ -1,0 +1,13 @@
+version: "3.9"
+
+services:
+  fastapi:
+    build: .  # 从当前目录的 Dockerfile 构建镜像
+    container_name: videoaudit
+    ports:
+      - "19236:8000"    # 本地 8000 对应容器 8000
+    env_file:
+      - .env           # 👈 自动加载 .env 文件
+    volumes:
+      - .:/app         # 👈 热加载代码（开发环境可用，生产可去掉）
+    restart: always
