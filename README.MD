@@ -9,5 +9,5 @@ docker-compose up -d --build
 
 接口文档地址
 ```
-部署后 主机地址:19236/docs
+部署后 主机地址:19236/docs  可通过更改docker-compose文件更改暴露端口
 ```
