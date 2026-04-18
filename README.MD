@@ -7,3 +7,7 @@
 docker-compose up -d --build
 ```
 
+接口文档地址
+```
+部署后 主机地址:19236/docs
+```
