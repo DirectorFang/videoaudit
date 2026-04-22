@@ -9,6 +9,7 @@ from pathlib import Path
 # env_file = "./.env"
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 env_file = PROJECT_ROOT / ".env"
+print(env_file)
 env_file_encoding ="utf-8"
 class DashScopeSettings(BaseSettings):
     api_key: str
