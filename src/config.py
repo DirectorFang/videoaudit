@@ -1,11 +1,14 @@
 from pydantic_settings import BaseSettings
 from pydantic import ConfigDict
+from pathlib import Path
 
 
 # =======================
 # 阿里云百炼（DashScope）
 # =======================
-env_file = "./.env"
+# env_file = "./.env"
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+env_file = PROJECT_ROOT / ".env"
 env_file_encoding ="utf-8"
 class DashScopeSettings(BaseSettings):
     api_key: str
