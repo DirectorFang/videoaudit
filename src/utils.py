@@ -123,7 +123,7 @@ class AlibabaLLM:
         prompt,
         video_path,
         fps=2,
-        model="qwen3.5-plus",
+        model="qwen3.6-plus",
     ):
         messages = [
             {
@@ -158,7 +158,7 @@ class AlibabaLLM:
             prompt,
             video_path,
             fps=2,
-            model="qwen3.5-plus",
+            model="qwen3.6-plus",
     ):
         messages = [
             {

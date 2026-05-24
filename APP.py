@@ -3,7 +3,10 @@ from pydantic import BaseModel, HttpUrl
 from fastapi.responses import JSONResponse
 
 from src.utils import AlibabaLLM
-from src.prompts import prompt1
+from src.prompts import (
+    pit_fissure_sealing as pit_fissure_sealing_prompt,
+    periodontal_probing as periodontal_probing_prompt,
+)
 import uvicorn
 
 app = FastAPI()
@@ -47,8 +50,8 @@ def error(code, message, http_status=200):
 # ========================
 # 接口
 # ========================
-@app.post("/score/video")
-async def score_video(req: VideoRequest):
+@app.post("/score/pit_fissure_sealing")
+async def pit_fissure_sealing(req: VideoRequest):
     """
     视频评分接口（URL模式）
     video_url: HttpUrl   # 视频url地址
@@ -58,7 +61,7 @@ async def score_video(req: VideoRequest):
     """
     try:
         result = await llm.async_chat_with_video(
-            prompt=prompt1,
+            prompt=pit_fissure_sealing_prompt,
             video_path=str(req.video_url),  # ⚠️ 传URL
             fps=req.fps,
         )
@@ -68,6 +71,31 @@ async def score_video(req: VideoRequest):
     except Exception as e:
         return error(4001, f"LLM调用失败: {str(e)}")
 
+
+
+# ========================
+# 接口
+# ========================
+@app.post("/score/periodontal_probing")
+async def periodontal_probing(req: VideoRequest):
+    """
+    视频评分接口（URL模式）
+    video_url: HttpUrl   # 视频url地址
+    fps: int = 2 #视频解析速率 一般不用传，取默认速度
+
+    return: 当前直接返回文本 后续若需其他格式再改
+    """
+    try:
+        result = await llm.async_chat_with_video(
+            prompt=periodontal_probing_prompt,
+            video_path=str(req.video_url),  # ⚠️ 传URL
+            fps=req.fps,
+        )
+
+        return success(result)
+
+    except Exception as e:
+        return error(4001, f"LLM调用失败: {str(e)}")
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
