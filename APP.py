@@ -47,6 +47,20 @@ def error(code, message, http_status=200):
     )
 
 
+def build_prompt_with_audio_transcript(prompt: str, audio_transcript: str) -> str:
+    print(audio_transcript)
+    transcript = audio_transcript.strip() or "未识别到明确的音频转写内容。"
+    return f"""{prompt}
+
+--------------------------------------------------
+【音频转写内容】
+以下内容来自视频音轨自动转写，仅用于辅助判断口述内容、探诊结果描述、疼痛反馈等需要听音频才能确认的评分项。
+如果转写内容与画面存在冲突，应结合视频画面审慎判断，并在报告中说明依据。
+
+{transcript}
+"""
+
+
 # ========================
 # 接口
 # ========================
@@ -86,8 +100,15 @@ async def periodontal_probing(req: VideoRequest):
     return: 当前直接返回文本 后续若需其他格式再改
     """
     try:
+        audio_transcript = await llm.async_transcribe_audio_from_url(
+            file_url=str(req.video_url),
+        )
+        prompt = build_prompt_with_audio_transcript(
+            periodontal_probing_prompt,
+            audio_transcript,
+        )
         result = await llm.async_chat_with_video(
-            prompt=periodontal_probing_prompt,
+            prompt=prompt,
             video_path=str(req.video_url),  # ⚠️ 传URL
             fps=req.fps,
         )

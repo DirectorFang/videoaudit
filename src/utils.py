@@ -14,11 +14,40 @@
   Describe:
 
 """
+import asyncio
+import json
+from http import HTTPStatus
+from urllib.request import urlopen
+
 from src.config import settings
 
 from dashscope import Generation, MultiModalConversation,AioMultiModalConversation
+from dashscope.audio.asr import Transcription
 from dashscope.aigc import AioGeneration
 from tenacity import retry, stop_after_attempt, wait_fixed, retry_if_exception_type
+
+
+def _get_value(data, key, default=None):
+    if isinstance(data, dict):
+        return data.get(key, default)
+    return getattr(data, key, default)
+
+
+def _download_json(url: str):
+    with urlopen(url, timeout=60) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def _extract_transcription_text(payload) -> str:
+    transcripts = _get_value(payload, "transcripts", []) or []
+    texts = []
+
+    for transcript in transcripts:
+        text = _get_value(transcript, "text", "")
+        if text:
+            texts.append(str(text).strip())
+
+    return "\n".join(text for text in texts if text)
 
 
 class AlibabaLLM:
@@ -110,6 +139,73 @@ class AlibabaLLM:
         return self._parse_response(response, model)
 
     # ========================
+    # 音视频文件转写
+    # ========================
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_fixed(1),
+        retry=retry_if_exception_type(Exception),
+        reraise=True,
+    )
+    def transcribe_audio_from_url(
+        self,
+        file_url: str,
+        model: str = "paraformer-v2",
+        language_hints=None,
+    ) -> str:
+        """
+        DashScope Paraformer supports public audio/video URLs, so the video URL
+        can be submitted directly to extract and transcribe the audio track.
+        """
+        task_response = Transcription.async_call(
+            api_key=self.api_key,
+            model=model,
+            file_urls=[file_url],
+            language_hints=language_hints or ["zh", "en"],
+        )
+        task_id = _get_value(_get_value(task_response, "output"), "task_id")
+        if not task_id:
+            raise Exception(f"{model} 转写任务提交失败: {task_response}")
+
+        transcribe_response = Transcription.wait(
+            api_key=self.api_key,
+            task=task_id,
+        )
+        if transcribe_response.status_code != HTTPStatus.OK:
+            raise Exception(f"{model} 转写任务失败: {transcribe_response}")
+
+        output = _get_value(transcribe_response, "output")
+        results = _get_value(output, "results", []) or []
+        if not results:
+            raise Exception(f"{model} 转写结果为空: {transcribe_response}")
+
+        first_result = results[0]
+        if _get_value(first_result, "subtask_status") != "SUCCEEDED":
+            code = _get_value(first_result, "code", "")
+            message = _get_value(first_result, "message", "")
+            raise Exception(f"{model} 转写子任务失败: {code} {message}".strip())
+
+        transcription_url = _get_value(first_result, "transcription_url")
+        if not transcription_url:
+            raise Exception(f"{model} 转写结果缺少 transcription_url: {first_result}")
+
+        payload = _download_json(transcription_url)
+        return _extract_transcription_text(payload)
+
+    async def async_transcribe_audio_from_url(
+        self,
+        file_url: str,
+        model: str = "paraformer-v2",
+        language_hints=None,
+    ) -> str:
+        return await asyncio.to_thread(
+            self.transcribe_audio_from_url,
+            file_url,
+            model,
+            language_hints,
+        )
+
+    # ========================
     # 视频（多模态）
     # ========================
     @retry(
@@ -124,6 +220,7 @@ class AlibabaLLM:
         video_path,
         fps=2,
         model="qwen3.6-plus",
+        # model="qwen3.5-omni-plus",
     ):
         messages = [
             {
